@@ -1,4 +1,4 @@
-name: Test and deploy docker container
+name: build & test
 
 # Trigger the workflow only for the master branch.
 on:
@@ -11,8 +11,8 @@ env:
   IMAGE_TAG: ${{ github.repository_owner }}/webrender
 
 jobs:
-  setup-build-publish-deploy:
-    name: Test the code, build the container, publish and deploy to the cluster
+  build-test-deploy:
+    name: Build, test and publish
     runs-on: ubuntu-latest
     timeout-minutes: 7
     steps:

@@ -1,5 +1,7 @@
 # WebRender • a simple container for rendering the Web
 
+[![Test and deploy](https://github.com/ZitRos/webrender/actions/workflows/test-and-deploy.yaml/badge.svg)](https://github.com/ZitRos/webrender/actions/workflows/test-and-deploy.yaml)
+
 This is a [docker container](https://hub.docker.com/r/zitros/webrender) for quick website rendering.
 
 ```

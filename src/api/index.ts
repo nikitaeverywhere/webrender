@@ -3,6 +3,7 @@ import "./health-check";
 import { registerEndpoint } from "utils";
 
 registerEndpoint({
+  log: false,
   method: "GET",
   path: "/",
   handler: (_, res) => {

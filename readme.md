@@ -22,7 +22,7 @@ This container exposes its API on port 80. Example: `http://this-container/healt
 Endpoint for checking whether this container is healthy. It will render a dummy page served on localhost
 under the hood and return status `200` when all right.
 
-### `POST /grab`
+### `POST /render`
 
 Renders the page as if it was opened in Chrome browser, executing JavaScript, loading styles, etc.
 When rendering, it invokes arbitrary JavaScript code provided in `"js"` in **async browser context**,

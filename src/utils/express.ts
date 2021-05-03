@@ -2,15 +2,28 @@ import express, { RequestHandler } from "express";
 import { json } from "body-parser";
 import { log as logToConsole, error } from "./log";
 
-export const PORT = process.env.PORT_WEBRENDER || 80;
+let resolveApiReady: (value?: unknown) => void = () => {};
+
+export const PORT = process.env.PORT_WEBRENDER || 8080;
+export const apiReady = new Promise((r) => (resolveApiReady = r));
 
 const app = express();
 
 app.use(json());
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   logToConsole(`API is listening on port ${PORT}.`);
+  resolveApiReady();
 });
+
+export const stopApi = async () => {
+  return new Promise((resolve) =>
+    server.close(() => {
+      logToConsole(`API server is closed.`);
+      resolve(void 0);
+    })
+  );
+};
 
 export const registerEndpoint = ({
   method,

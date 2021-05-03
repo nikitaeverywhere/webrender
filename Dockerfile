@@ -1,6 +1,6 @@
 FROM node:14-alpine
 
-ENV PORT_WEBRENDER=80
+ENV PORT_WEBRENDER=8080
 
 COPY . /code
 WORKDIR /code

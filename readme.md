@@ -12,7 +12,7 @@ under the hood.
 
 ## API
 
-This container exposes its API on port 80. Example: `http://this-container/health-check`.
+This container exposes its API on port 8080. Example: `http://this-container/health-check`.
 
 + Request body type (for POST requests): `application/json`
 + Response body type (for all endpoints): `application/json`
@@ -52,7 +52,7 @@ Request body:
     let firstCat;
     while (true) {
       if (firstCat = document.querySelector('div[jsaction] div[jsaction] img')) {
-        return { cat: firstCat.src }; // As soon as this code returns, /grab will respond with the result.
+        return { cat: firstCat.src }; // As soon as this code returns, /render will respond with the result.
       }
       await new Promise(resolve => setTimeout(resolve, 50)); // Sleep for 50ms
     }

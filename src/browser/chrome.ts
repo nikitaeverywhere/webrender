@@ -19,13 +19,20 @@ const getGlobalBrowser = () => {
       })
       .catch((e) => {
         console.error(e);
-        process.exit(0);
+        process.exit(1);
       });
     await browser.newPage(); // Open a first tab which should always be blank.
 
-    log(`Browser is ready.`);
+    log(`Global browser is ready.`);
     resolve(browser);
   }));
+};
+
+export const closeBrowser = async () => {
+  if (globalBrowser && (await globalBrowser).isConnected()) {
+    await (await globalBrowser).close();
+    log(`Global browser is closed.`);
+  }
 };
 
 export const openUrl = async ({

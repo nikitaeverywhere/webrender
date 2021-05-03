@@ -2,7 +2,7 @@
   "compilerOptions": {
     "target": "ES2020",                       /* Specify ECMAScript target version: 'ES3' (default), 'ES5', 'ES2015', 'ES2016', 'ES2017', 'ES2018', 'ES2019', 'ES2020', or 'ESNEXT'. */
     "module": "commonjs",                     /* Specify module code generation: 'none', 'commonjs', 'amd', 'system', 'umd', 'es2015', 'es2020', or 'ESNext'. */
-    "allowJs": true,                          /* Allow javascript files to be compiled. */
+    "allowJs": false,                         /* Allow javascript files to be compiled. */
     "outDir": "build",                        /* Redirect output structure to the directory. */
     "rootDir": "src",                         /* Specify the root directory of input files. Use to control the output directory structure with --outDir. */
     "strict": true,                           /* Enable all strict type-checking options. */
@@ -11,8 +11,10 @@
     "resolveJsonModule": true,                /* Include modules imported with '.json' extension */
     "skipLibCheck": true,                     /* Skip type checking of declaration files. */
     "forceConsistentCasingInFileNames": true, /* Disallow inconsistently-cased references to the same file. */
+    "allowSyntheticDefaultImports": true,
     "declaration": true,
     "baseUrl": "./src",
+    "rootDirs": ["."],
     "plugins": [
       {
         "transform": "@zerollup/ts-transform-paths",
@@ -21,7 +23,7 @@
     ]
   },
   "include": [
-    "src",
+    "src"
   ],
   "exclude": [
     "node_modules"

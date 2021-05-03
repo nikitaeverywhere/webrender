@@ -1,8 +1,9 @@
 import "./api";
-import { closeBrowser } from "./browser";
+import { closeBrowser, getGlobalBrowser } from "./browser";
 import { apiReady, stopApi } from "utils";
 
 export const start = async () => {
+  await getGlobalBrowser();
   await apiReady;
 };
 

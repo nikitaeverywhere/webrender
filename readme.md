@@ -1,20 +1,23 @@
-# WebRender • a simple container for rendering the Web
+# webrender • a light container for rendering the Web
 
 [![Test and deploy](https://github.com/ZitRos/webrender/actions/workflows/test-and-deploy.yaml/badge.svg)](https://github.com/ZitRos/webrender/actions/workflows/test-and-deploy.yaml)
+![Docker Image Size (latest)](https://img.shields.io/docker/image-size/zitros/webrender)
+![GitHub](https://img.shields.io/github/license/ZitRos/webrender)
 
-This is a [docker container](https://hub.docker.com/r/zitros/webrender) for quick website rendering.
+This is a smallest possible [container](https://hub.docker.com/r/zitros/webrender) exposing a simple
+yet powerful API for quick websites rendering.
 
 ```
 docker pull zitros/webrender
 ```
 
-Primarily, it exposes an API to get the required answer from the webpage (as if viewed from the browser)
-as soon as it is available. It uses [Playwright](https://github.com/microsoft/playwright) with Chromium
-under the hood.
++ Always production-ready and light.
++ Get any information from rendered pages with arbitrary async JavaScript.
++ Using [Playwright](https://github.com/microsoft/playwright) with Chromium under the hood.
 
 ## API
 
-This container exposes its API on port 8080. Example: `http://this-container/health-check`.
+This container exposes its API on port `8080`. Example: `http://this-container:8080/health-check`.
 
 + Request body type (for POST requests): `application/json`
 + Response body type (for all endpoints): `application/json`

@@ -8,7 +8,7 @@ type RenderResult = {
 
 let globalBrowser: Promise<ChromiumBrowser>;
 
-const getGlobalBrowser = () => {
+export const getGlobalBrowser = () => {
   if (globalBrowser) {
     return globalBrowser;
   }
@@ -16,6 +16,9 @@ const getGlobalBrowser = () => {
     const browser = await chromium
       .launch({
         headless: true,
+        ...(process.env.CHROME_BIN
+          ? { executablePath: process.env.CHROME_BIN }
+          : {}),
       })
       .catch((e) => {
         console.error(e);

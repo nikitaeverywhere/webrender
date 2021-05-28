@@ -1,4 +1,4 @@
-import { chromium, ChromiumBrowser, Request } from "playwright-chromium";
+import { chromium, ChromiumBrowser } from "playwright-chromium";
 import { log } from "utils";
 
 type RenderResult = {
@@ -51,12 +51,14 @@ export const openUrl = async ({
 }) => {
   const browser = await getGlobalBrowser();
   const page = await browser.newPage();
+  let closingThePage = false;
   let lastRequestTimeout: number;
   let renderResolveFunction: (value: RenderResult) => void;
   const renderPromise = new Promise<RenderResult>((resolve) => {
     renderResolveFunction = resolve;
   });
   const closePage = async (error?: Error | undefined, result?: any) => {
+    closingThePage = true;
     // Must be safe to call multiple times.
     clearTimeout(pageTimeout);
     clearTimeout(lastRequestTimeout);
@@ -100,8 +102,9 @@ export const openUrl = async ({
         // Warning: even though this code seems to be native to the current context (typescript),
         // IT IS INDEED TAKEN AS-IS AND IS EXECUTED IN THE BROWSER. ANY TYPE DECLARATIONS OR
         // TYPESCRIPT TRANSPILER ARTIFACTS WILL FAIL THIS CODE IN THE BROWSER.
-        const AsyncFunction = Object.getPrototypeOf(async function () {})
-          .constructor;
+        const AsyncFunction = Object.getPrototypeOf(
+          async function () {}
+        ).constructor;
         const f = new AsyncFunction("webrender", js);
         try {
           return await f();
@@ -110,7 +113,16 @@ export const openUrl = async ({
         }
       }, js)
       .then((r) => closePage(undefined, r))
-      .catch((e) => closePage(e));
+      .catch((e) => {
+        // page.evaluate will throw an error if the page was closed, but evaluation was not complete.
+        if (!closingThePage) {
+          closePage(e);
+        } else {
+          log(
+            `[i] ${url}: JavaScript evaluation was not complete before the page was closed.`
+          );
+        }
+      });
   }
 
   const result = await renderPromise;

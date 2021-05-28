@@ -33,6 +33,25 @@ describe("/render", () => {
     expect(response.result.cat).length.to.be.greaterThan(30); // Just test that it's there
   });
 
+  it("properly times out in case JavaScript execution stuck", async () => {
+    const result = await fetch(URL, {
+      method,
+      headers,
+      body: JSON.stringify({
+        url: "https://www.google.com/search?q=cats&tbm=isch",
+        js: `
+          await new Promise(r => setTimeout(r, 999999));
+          return 'never returned';
+        `,
+      }),
+    });
+    const response = await result.json();
+
+    expect(result.status).to.equal(200);
+    expect(response.result).to.be.null;
+    expect(response.error).to.be.undefined;
+  });
+
   it("returns the exact JavaScript error when provided 'js' is not valid", async () => {
     const result = await fetch(URL, {
       method,

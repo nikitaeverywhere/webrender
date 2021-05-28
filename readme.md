@@ -1,11 +1,12 @@
-# webrender • a light container for rendering the Web
+# webrender • a fast container for rendering the Web
 
 [![Test and deploy](https://github.com/ZitRos/webrender/actions/workflows/test-and-deploy.yaml/badge.svg)](https://github.com/ZitRos/webrender/actions/workflows/test-and-deploy.yaml)
 ![Docker Image Size (latest)](https://img.shields.io/docker/image-size/zitros/webrender)
 ![GitHub](https://img.shields.io/github/license/ZitRos/webrender)
 
-This is a smallest possible [container](https://hub.docker.com/r/zitros/webrender) exposing a simple
-yet powerful API for quick websites rendering.
+This is a [docker container](https://hub.docker.com/r/zitros/webrender) exposing a simple
+yet powerful API for quick websites rendering. Optimized for speed of rendering, in comparison
+to [zitros/prerender](https://hub.docker.com/r/zitros/prerender).
 
 ```
 docker pull zitros/webrender

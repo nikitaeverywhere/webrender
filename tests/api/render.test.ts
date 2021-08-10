@@ -33,6 +33,23 @@ describe("/render", () => {
     expect(response.result.cat).length.to.be.greaterThan(30); // Just test that it's there
   });
 
+  it("renders an empty page when given empty URL", async () => {
+    const result = await fetch(URL, {
+      method,
+      headers,
+      body: JSON.stringify({
+        url: "",
+        js: `
+          return document.body.innerHTML;
+        `,
+      }),
+    });
+    const response = await result.json();
+
+    expect(result.status).to.equal(200);
+    expect(response.result).to.equal("");
+  });
+
   it("properly times out in case JavaScript execution stuck", async () => {
     const result = await fetch(URL, {
       method,
@@ -68,6 +85,28 @@ describe("/render", () => {
     expect(response.error).to.include("Evaluation failed");
     expect(response.error).to.include(
       "ReferenceError: thisIsSomethingWeird is not defined"
+    );
+  });
+
+  it("snapshots pdf", async () => {
+    const result = await fetch(URL, {
+      method,
+      headers,
+      body: JSON.stringify({
+        url: "",
+        js: `
+          return document.body.innerHTML = 'test';
+        `,
+        takePdfSnapshot: true,
+      }),
+    });
+    const response = await result.json();
+
+    expect(result.status).to.equal(200);
+    expect(response.result).to.equal("test");
+    expect(response.pdfSnapshot).to.have.length.greaterThan(0);
+    expect(Buffer.from(response.pdfSnapshot, "base64").toString()).to.contain(
+      "/CreationDate"
     );
   });
 });

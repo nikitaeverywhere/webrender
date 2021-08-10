@@ -1,3 +1,4 @@
+import "./empty";
 import "./render";
 import "./health-check";
 import { registerEndpoint } from "utils";

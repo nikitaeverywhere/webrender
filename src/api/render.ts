@@ -1,11 +1,12 @@
 import { openUrl } from "browser";
-import { log, registerEndpoint } from "utils";
+import { log, PORT, registerEndpoint } from "utils";
 
 registerEndpoint({
   method: "POST",
   path: "/render",
   handler: async (req, res) => {
-    const { url, js, timeout, waitAfterResourcesLoad } = req.body || {};
+    const { url, js, timeout, waitAfterResourcesLoad, takePdfSnapshot } =
+      req.body || {};
 
     if (typeof url !== "string") {
       return res.status(400).send({
@@ -32,7 +33,13 @@ registerEndpoint({
       });
     }
 
-    const result = await openUrl({ url, js, timeout, waitAfterResourcesLoad });
+    const result = await openUrl({
+      url: url || `http://localhost:${PORT}/empty`,
+      js,
+      timeout,
+      waitAfterResourcesLoad,
+      takePdfSnapshot: !!takePdfSnapshot,
+    });
 
     log(`|| Rendering ${url}`);
     res.status(result.error ? 500 : 200).send({

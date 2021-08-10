@@ -43,28 +43,40 @@ export const openUrl = async ({
   js = "",
   timeout = 20000,
   waitAfterResourcesLoad = 1000,
+  takePdfSnapshot = false,
 }: {
   url: string;
   js?: string;
   timeout?: number;
   waitAfterResourcesLoad?: number;
+  takePdfSnapshot?: boolean;
 }) => {
   const browser = await getGlobalBrowser();
   const page = await browser.newPage();
   let closingThePage = false;
   let lastRequestTimeout: number;
   let renderResolveFunction: (value: RenderResult) => void;
+  let pdfBuffer: Buffer = Buffer.from([]);
   const renderPromise = new Promise<RenderResult>((resolve) => {
     renderResolveFunction = resolve;
   });
   const closePage = async (error?: Error | undefined, result?: any) => {
-    closingThePage = true;
     // Must be safe to call multiple times.
+    if (closingThePage) {
+      return;
+    }
+    closingThePage = true;
     clearTimeout(pageTimeout);
     clearTimeout(lastRequestTimeout);
+
+    if (takePdfSnapshot) {
+      pdfBuffer = await page.pdf({ format: "A4" });
+    }
+
     if (!page.isClosed()) {
       await page.close();
     }
+
     renderResolveFunction({
       error: error
         ? (error.stack || error.message || error + "").replace(
@@ -73,7 +85,7 @@ export const openUrl = async ({
             ""
           )
         : undefined,
-      result: result || null,
+      result: typeof result === "undefined" ? null : result,
     });
   };
   const pageTimeout = setTimeout(closePage, timeout);
@@ -130,5 +142,6 @@ export const openUrl = async ({
   return {
     url: await page.url(),
     ...result,
+    ...(pdfBuffer.length ? { pdfSnapshot: pdfBuffer.toString("base64") } : {}),
   };
 };

@@ -40,6 +40,7 @@ Request body:
 ```js
 {
   // REQUIRED. URL of the page to render.
+  // When the empty string is given, returns an empty page.
   "url": "https://www.google.com/search?q=cats&tbm=isch",
 
   // OPTIONAL. Timeout for rendering the page. Defaults to 20 seconds, then the result will be {null}.
@@ -49,6 +50,9 @@ Request body:
   // requests are done, and then returns {null} as a result regardless
   // of whether the provided "js" is still running.
   "waitAfterResourcesLoad": 1000, 
+
+  // When specified, returns base64-encoded "pdfSnapshot" property in the response.
+  "takePdfSnapshot": false,
 
   // OPTIONAL. An arbitrary JavaScript code to be invoked in ASYNC CONTEXT in the browser, immediately
   // when page starts loading. Once this code returns, WebRender will immediately close the page and

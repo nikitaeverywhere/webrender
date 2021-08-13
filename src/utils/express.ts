@@ -9,7 +9,11 @@ export const apiReady = new Promise((r) => (resolveApiReady = r));
 
 const app = express();
 
-app.use(json());
+app.use(
+  json({
+    limit: "10mb",
+  })
+);
 
 const server = app.listen(PORT, () => {
   logToConsole(`API is listening on port ${PORT}.`);

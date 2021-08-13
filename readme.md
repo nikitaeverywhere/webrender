@@ -74,11 +74,19 @@ Response body example when request succeeds:
 
 ```js
 {
+  /* Is present when any rendering errors happen. */
   "error": "Validation errors, or an error stack if any error happened when invoking provided JavaScript code.",
+  
+  /* Requested URL. */
   "url": "https://www.google.com/search?q=cats&tbm=isch",
+  
+  /* JavaScript evaluation result (stringified object). */
   "result": {
     "cat": "data:image/jpeg;base64,/9j/4AAQSkZ...yiFQ2pa4tNPQitOFX//Z"
-  }
+  },
+
+  /* Optional BASE64-encoded PDF, when "takePdfSnapshot" is given. */
+  "pdfSnapshot": "Aci2zo...S51==",
 }
 ```
 

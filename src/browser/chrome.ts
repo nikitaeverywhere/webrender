@@ -57,6 +57,7 @@ export const openUrl = async ({
   let lastRequestTimeout: number;
   let renderResolveFunction: (value: RenderResult) => void;
   let pdfBuffer: Buffer = Buffer.from([]);
+  let pageHtmlBeforeClosing = "";
   const renderPromise = new Promise<RenderResult>((resolve) => {
     renderResolveFunction = resolve;
   });
@@ -77,18 +78,31 @@ export const openUrl = async ({
     }
 
     if (!page.isClosed()) {
+      log(
+        `Page hasn't been closed yet, getting HTML from it and closing it...`
+      );
+      pageHtmlBeforeClosing = await page.innerHTML("html");
       await page.close();
     }
 
+    const responseError = error
+      ? (error.stack || error.message || error + "").replace(
+          // Cleanup error stack from fuss
+          /\n\s+at UtilityScript\.[\w\W]*/,
+          ""
+        )
+      : undefined;
+    const responseResult = typeof result === "undefined" ? null : result;
+
+    if (!responseError && !responseResult) {
+      log(
+        `No result neither error on page close of ${url}. Page HTML before closing is:\n\n${pageHtmlBeforeClosing}`
+      );
+    }
+
     renderResolveFunction({
-      error: error
-        ? (error.stack || error.message || error + "").replace(
-            // Cleanup error stack from fuss
-            /\n\s+at UtilityScript\.[\w\W]*/,
-            ""
-          )
-        : undefined,
-      result: typeof result === "undefined" ? null : result,
+      error: responseError,
+      result: responseResult,
     });
   };
   const pageTimeout = setTimeout(closePage, timeout);

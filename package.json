@@ -1,6 +1,6 @@
 {
   "name": "webrender",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "A light container with headless Chrome (Playwright) to render the web.",
   "main": "src/index.ts",
   "scripts": {

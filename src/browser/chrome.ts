@@ -41,7 +41,7 @@ export const closeBrowser = async () => {
 export const openUrl = async ({
   url,
   js = "",
-  timeout = 20000,
+  timeout = 25000,
   waitAfterResourcesLoad = 1000,
   takePdfSnapshot = false,
 }: {
@@ -66,6 +66,9 @@ export const openUrl = async ({
       return;
     }
     closingThePage = true;
+
+    log(`Closing ${url} with result=${result}, error=${error}`);
+
     clearTimeout(pageTimeout);
     clearTimeout(lastRequestTimeout);
 
@@ -106,9 +109,13 @@ export const openUrl = async ({
   page.on("requestfailed", onRequestEnd);
   page.on("requestfinished", onRequestEnd);
 
-  await page.goto(url);
+  log(`Opening page ${url}...`);
+  await page.goto(url, {
+    waitUntil: "domcontentloaded",
+  });
 
   if (js) {
+    log(`Evaluating given JavaScript on the page ${url}...`);
     page
       .evaluate(async (js) => {
         // Warning: even though this code seems to be native to the current context (typescript),
@@ -128,6 +135,7 @@ export const openUrl = async ({
       .catch((e) => {
         // page.evaluate will throw an error if the page was closed, but evaluation was not complete.
         if (!closingThePage) {
+          log(`[i] ${url}: JavaScript evaluation errored: ${e}`);
           closePage(e);
         } else {
           log(

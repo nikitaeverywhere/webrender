@@ -51,4 +51,4 @@ jobs:
         docker-compose -f docker-compose.yaml up -d
         sleep 5
         curl -v --fail http://localhost:8080/health-check/
-    - run: docker push ${{ env.IMAGE_TAG }}
+    - run: docker push --all-tags ${{ env.IMAGE_TAG }}

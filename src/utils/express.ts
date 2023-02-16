@@ -52,7 +52,7 @@ export const registerEndpoint = ({
         logToConsole(`>> ${method} ${path}`);
       }
       await handler(...args);
-    } catch (e) {
+    } catch (e: any) {
       error(`|| ${method} ${path} ${e?.stack || e}`);
       res.status(500).send({
         error: `Unable to handle ${path}: ${e?.message || e}`,

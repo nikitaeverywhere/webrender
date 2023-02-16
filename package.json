@@ -1,12 +1,12 @@
 {
   "name": "webrender",
-  "version": "1.1.1",
+  "version": "1.2.0",
   "description": "A light container with headless Chrome (Playwright) to render the web.",
   "main": "src/index.ts",
   "scripts": {
-    "build": "ttsc",
+    "build": "tsc && tsc-alias",
     "start": "npm run build && node build/index.js",
-    "test": "mocha --timeout 8000 -r ts-node/register tests/init.ts tests/**/*.test.ts",
+    "test": "ts-mocha --timeout 8000 tests/init.ts tests/**/*.test.ts",
     "coverage": "nyc -r lcov -e .ts -x \"*.test.ts\" npm run test"
   },
   "repository": {
@@ -30,22 +30,22 @@
   },
   "homepage": "https://github.com/ZitRos/webrender#readme",
   "dependencies": {
-    "body-parser": "^1.19.0",
-    "express": "^4.17.1",
-    "playwright-chromium": "^1.10.0"
+    "body-parser": "^1.20.1",
+    "express": "^4.18.2",
+    "playwright-chromium": "^1.30.0"
   },
   "devDependencies": {
-    "@types/chai": "^4.2.17",
-    "@types/express": "^4.17.11",
-    "@types/mocha": "^8.2.2",
-    "@types/node-fetch": "^2.5.10",
-    "@zerollup/ts-transform-paths": "^1.7.18",
-    "chai": "^4.3.4",
-    "mocha": "^8.3.2",
-    "node-fetch": "^2.6.1",
+    "@types/chai": "^4.3.4",
+    "@types/express": "^4.17.17",
+    "@types/mocha": "^10.0.1",
+    "@types/node-fetch": "^2.6.2",
+    "chai": "^4.3.7",
+    "mocha": "^10.2.0",
+    "node-fetch": "^2.6.9",
     "nyc": "^15.1.0",
-    "ts-node": "^9.1.1",
-    "ttypescript": "^1.5.12",
-    "typescript": "^4.2.4"
+    "ts-mocha": "^10.0.0",
+    "ts-node": "^10.9.1",
+    "tsc-alias": "^1.8.2",
+    "typescript": "^4.9.5"
   }
 }

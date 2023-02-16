@@ -111,8 +111,9 @@ export const openUrl = async ({
   let requestsFinished = 0;
 
   const onRequestEnd = () => {
+    clearTimeout(lastRequestTimeout);
     if (++requestsFinished === requestsMade) {
-      lastRequestTimeout = setTimeout(closePage, waitAfterResourcesLoad);
+      lastRequestTimeout = setTimeout(closePage, waitAfterResourcesLoad) as any;
     }
   };
 

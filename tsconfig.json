@@ -11,16 +11,9 @@
     "resolveJsonModule": true,                /* Include modules imported with '.json' extension */
     "skipLibCheck": true,                     /* Skip type checking of declaration files. */
     "forceConsistentCasingInFileNames": true, /* Disallow inconsistently-cased references to the same file. */
-    "allowSyntheticDefaultImports": true,
     "declaration": true,
     "baseUrl": "./src",
-    "rootDirs": ["."],
-    "plugins": [
-      {
-        "transform": "@zerollup/ts-transform-paths",
-        "exclude": ["*"]
-      }
-    ]
+    "rootDirs": ["."]
   },
   "include": [
     "src"

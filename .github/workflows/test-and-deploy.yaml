@@ -33,11 +33,18 @@ jobs:
     - run: npm run build
     - run: npm run test
 
+    - name: Get package version
+      id: package-version
+      uses: koj-co/package-version-action@v1.0.1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
     # Build & push the container
     - name: Build container image
       run: |
         docker build \
-        -t ${{ env.IMAGE_TAG }} \
+        -t ${{ env.IMAGE_TAG }}:latest \
+        -t ${{ env.IMAGE_TAG }}:${{ steps.package-version.outputs.package-version }} \
         .
     - name: Validate docker container before pushing
       run: |

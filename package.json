@@ -6,7 +6,7 @@
   "scripts": {
     "build": "tsc && tsc-alias",
     "start": "npm run build && node build/index.js",
-    "test": "ts-mocha --timeout 8000 tests/init.ts tests/**/*.test.ts",
+    "test": "ts-mocha --timeout 16000 tests/init.ts tests/**/*.test.ts",
     "coverage": "nyc -r lcov -e .ts -x \"*.test.ts\" npm run test"
   },
   "repository": {

@@ -30,10 +30,11 @@ under the hood and return status `200` when all right.
 
 ### `POST /render`
 
-Renders the page as if it was opened in Chrome browser, executing JavaScript, loading styles, etc.
-When rendering, it invokes arbitrary JavaScript code provided in `"js"` in **async browser context**,
-and returns the `JSON.stringify()` of whatever this code returns in the `"result"` property of the
-response body.
+Renders the page as if it was opened in Chrome browser, optionally invoking custom async JavaScript
+provided as a `"js"` parameter.
+
++ A result of a custom async JavaScript invocation (`"js"` and `"jsOn"` parameters) is returned in the response as `"result"`.
++ A result of the PDF generation (`"takePdfSnapshot"` parameter) is returned in the response as `"pdfSnapshot"`.
 
 Request body:
 
@@ -95,24 +96,24 @@ Response body when request fails:
 
 ```js
 {
-    /** Error message. Always defined in error responses. */
-    "error": "page.evaluate: Evaluation failed: ReferenceError: windo is not defined\n    at eval (eval at <anonymous> (eval at evaluate (:303:29)), <anonymous>:3:41)\n    at eval (eval at evaluate (:303:29), <anonymous>:9:30)",
+  /** Error message. Always defined in error responses. */
+  "error": "page.evaluate: Evaluation failed: ReferenceError: windo is not defined\n    at eval (eval at <anonymous> (eval at evaluate (:303:29)), <anonymous>:3:41)\n    at eval (eval at evaluate (:303:29), <anonymous>:9:30)",
 
-    /**
-     * Error code. Always defined in error responses.
-     * 
-     * - BAD_REQUEST => Invalid request.
-     * - TIMEOUT => Render request timeout (the desired result is not obtained within timeout).
-     * - NAVIGATION => Navigation errors, such as malformed URL, DNS or TLS certificate errors.
-     * - JS => A JavaScript error occurred (in the provided "js").
-     * - UNKNOWN => Unpredicted errors which means that webrender has failed.
-     */
-    "errorCode": "JS", // See error codes below.
+  /**
+   * Error code. Always defined in error responses.
+   * 
+   * - BAD_REQUEST => Invalid request.
+   * - TIMEOUT => Render request timeout (the desired result is not obtained within timeout).
+   * - NAVIGATION => Navigation errors, such as malformed URL, DNS or TLS certificate errors.
+   * - JS => A JavaScript error occurred (in the provided "js").
+   * - UNKNOWN => Unpredicted errors which means that webrender has failed.
+   */
+  "errorCode": "JS", // See error codes below.
 
-    /** Always the requested URL. */
-    "url": "https://www.google.com/search?q=cats&tbm=isch",
+  /** Always the requested URL. */
+  "url": "https://www.google.com/search?q=cats&tbm=isch",
 
-    /** Always null */
-    "result": null,
+  /** Always null */
+  "result": null,
 }
 ```

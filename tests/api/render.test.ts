@@ -150,4 +150,47 @@ describe("/render", () => {
     expect(result.status).to.equal(200);
     expect(response.result).to.equal("1.0.0");
   });
+
+  it("handles HTTP redirects", async () => {
+    const result = await fetch(URL_RENDER, {
+      method,
+      headers,
+      body: JSON.stringify({
+        url: "http://google.com",
+        jsOn: "domcontentloaded",
+        js: `
+          return document.title;
+        `,
+      }),
+    });
+    const response = await result.json();
+
+    expect(result.status).to.equal(200);
+    expect(response.url).to.include("https://www.");
+    expect(response.result).to.include("Google");
+  });
+
+  it("handles javascript redirects", async () => {
+    const result = await fetch(URL_RENDER, {
+      method,
+      headers,
+      body: JSON.stringify({
+        url: "https://www.google.com", // A page without redirect
+        jsOn: "domcontentloaded",
+        js: `
+          if (!window.location.href.startsWith("https://www.google.com.ua")) {
+            window.location.href = "https://www.google.com.ua";
+            await new Promise(r => setTimeout(r, 2000));
+            return 'no, it should not return this';
+          }
+          return 'yes, it should return this';
+        `,
+      }),
+    });
+    const response = await result.json();
+
+    expect(result.status).to.equal(200);
+    expect(response.url).to.include("https://www.google.com.ua");
+    expect(response.result).to.be.equal("yes, it should return this");
+  });
 });

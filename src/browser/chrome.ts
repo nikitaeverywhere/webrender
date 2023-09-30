@@ -6,11 +6,6 @@ import {
 } from "playwright-chromium";
 import { error, log } from "utils";
 
-type RenderResult = {
-  error: string | undefined;
-  result: any;
-};
-
 let globalBrowser: Promise<ChromiumBrowser>;
 
 export const getGlobalBrowser = () => {
@@ -159,7 +154,8 @@ export const openUrl = async ({
     page.on(
       "console",
       (msg) =>
-        msg.type() === "error" && log(`JS error |`, msg.text(), `@ [${url}]`)
+        msg.type() === "error" &&
+        log(`JS error |`, msg.text().replace(/\n[\w\W]*/, ""), `@ [${url}]`)
     );
     await page.addInitScript({
       content: getPageInitScriptFor(js, jsOn),
@@ -180,36 +176,57 @@ export const openUrl = async ({
 
   const startedAt = Date.now();
   const timeElapsedAfterPageCommit = startedAt - pageLoadStartedAt;
-  const nextTimeout = Math.max(1, timeout - timeElapsedAfterPageCommit);
+  let nextTimeout = Math.max(1, timeout - timeElapsedAfterPageCommit);
   let result: any = null;
   if (js) {
-    log(`Evaluating given JavaScript on the page ${url}...`);
-    try {
-      result = await Promise.race([
-        new Promise((_, reject) =>
-          setTimeout(
-            () =>
-              reject(
-                new errors.TimeoutError("JavaScript execution has timed out.")
-              ),
-            nextTimeout
-          )
-        ),
-        page
-          // Warning: even the code inside evaluate seems to be native to the current context (typescript),
-          // IT IS INDEED TAKEN AS-IS AND IS EXECUTED IN THE BROWSER. ANY TYPE DECLARATIONS OR
-          // TYPESCRIPT TRANSPILER ARTIFACTS WILL FAIL THIS CODE IN THE BROWSER.
-          .evaluate(async (WINDOW_VARIABLE_NAME) => {
-            /* @ts-expect-error */
-            return await window[WINDOW_VARIABLE_NAME];
-          }, WINDOW_VARIABLE_NAME),
-      ]);
-    } catch (e) {
-      return await getErrorResult(context, e, "JS");
+    let jsContextPageUrl = page.url();
+    while (true) {
+      try {
+        log(`Evaluating given JavaScript on the page ${page.url()}...`);
+        result = await Promise.race([
+          new Promise((_, reject) =>
+            setTimeout(
+              () =>
+                reject(
+                  new errors.TimeoutError("JavaScript execution has timed out.")
+                ),
+              nextTimeout
+            )
+          ),
+          page
+            // Warning: even the code inside evaluate seems to be native to the current context (typescript),
+            // IT IS INDEED TAKEN AS-IS AND IS EXECUTED IN THE BROWSER. ANY TYPE DECLARATIONS OR
+            // TYPESCRIPT TRANSPILER ARTIFACTS WILL FAIL THIS CODE IN THE BROWSER.
+            .evaluate(async (WINDOW_VARIABLE_NAME) => {
+              /* @ts-expect-error */
+              return await window[WINDOW_VARIABLE_NAME];
+            }, WINDOW_VARIABLE_NAME),
+        ]);
+        break;
+      } catch (e: any) {
+        // TODO(https://github.com/microsoft/playwright/issues/27374): maybe a better way to handle the navigation error.
+        const failedAtUrl = page.url();
+        const isNavError = ((e.message || e.stack || e) + "").includes(
+          "because of a navigation"
+        );
+        if (isNavError) {
+          await new Promise((r) => setTimeout(r, 20)); // Prevents infinite loops in case of fire
+          const timeElapsedAfterPageCommit = Date.now() - pageLoadStartedAt;
+          nextTimeout = Math.max(1, timeout - timeElapsedAfterPageCommit);
+          jsContextPageUrl = failedAtUrl;
+          log(
+            `[i] JavaScript error is handled as a page navigation, ${nextTimeout}ms left [${jsContextPageUrl} -> ${failedAtUrl}]`
+          );
+          continue;
+        } else {
+          log(`[i] JavaScript error at URL=${failedAtUrl}`);
+        }
+        return await getErrorResult(context, e, "JS");
+      }
     }
-    log(`✔ JS evaluated in ${Date.now() - startedAt}ms at URL=${url}`);
+    log(`✔ JS evaluated in ${Date.now() - startedAt}ms at URL=${page.url()}`);
   } else {
-    log(`Waiting until page load event, URL=${url}...`);
+    log(`Waiting until page load event, URL=${page.url()}...`);
     try {
       await page.waitForLoadState("load", {
         timeout: nextTimeout,
@@ -217,19 +234,21 @@ export const openUrl = async ({
     } catch (e) {
       return await getErrorResult(context, e);
     }
-    log(`✔ Page loaded in ${Date.now() - startedAt}ms at URL=${url}`);
+    log(`✔ Page loaded in ${Date.now() - startedAt}ms at URL=${page.url()}`);
   }
 
   if (takePdfSnapshot) {
     try {
-      log(`Taking PDF snapshot at URL=${url}...`);
+      log(`Taking PDF snapshot at URL=${page.url()}...`);
       const startedAt = Date.now();
       pdfSnapshotBase64 = (await page.pdf({ format: "A4" })).toString("base64");
       log(
-        `✔ PDF snapshot is done in ${Date.now() - startedAt}ms at URL=${url}...`
+        `✔ PDF snapshot is done in ${
+          Date.now() - startedAt
+        }ms at URL=${page.url()}...`
       );
     } catch (e) {
-      error(`Unable to generate PDF snapshot for ${url}`);
+      error(`Unable to generate PDF snapshot for ${page.url()}`);
     }
   }
 

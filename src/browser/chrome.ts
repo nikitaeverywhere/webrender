@@ -1,5 +1,10 @@
-import { chromium, ChromiumBrowser } from "playwright-chromium";
-import { log } from "utils";
+import {
+  BrowserContext,
+  chromium,
+  ChromiumBrowser,
+  errors,
+} from "playwright-chromium";
+import { error, log } from "utils";
 
 type RenderResult = {
   error: string | undefined;
@@ -13,6 +18,7 @@ export const getGlobalBrowser = () => {
     return globalBrowser;
   }
   return (globalBrowser = new Promise(async (resolve) => {
+    log(`Starting global browser...`);
     const browser = await chromium
       .launch({
         headless: true,
@@ -38,133 +44,208 @@ export const closeBrowser = async () => {
   }
 };
 
+const WINDOW_VARIABLE_NAME = `___webrender`;
+export const getPageInitScriptFor = (
+  js: string,
+  jsOn: JsOn = "commit"
+) => `try {
+  const AsyncFunction = Object.getPrototypeOf(
+    async function () {}
+  ).constructor;
+  const f = new AsyncFunction("webrender", \`${js
+    .replace(/`/g, "\\`")
+    .replace(/\${/g, "\\${")}\`);
+  const promise = ${
+    jsOn === "commit"
+      ? "f()"
+      : `new Promise((resolve) => {
+    ${
+      jsOn === "domcontentloaded"
+        ? 'document.addEventListener("DOMContentLoaded"'
+        : 'window.addEventListener("load"'
+    }, () => resolve());
+  }).then(() => f())`
+  };
+  Object.defineProperty(window, '${WINDOW_VARIABLE_NAME}', {
+    get: () => promise
+  });
+} catch (e) {
+  console.error("Page init script has failed!", e);
+}`;
+
+const closeContext = async (ctx: BrowserContext) => {
+  try {
+    await ctx.close();
+  } catch (e) {
+    error(`Can't close browser context!`, e);
+  }
+};
+
+type JsOn = "commit" | "domcontentloaded" | "load";
+type OpenUrlError = {
+  error: string;
+  errorCode:
+    | "TIMEOUT" // Timed out - page navigation or rendering or JavaScript evaluation was not complete in time.
+    | "NAVIGATION" // Navigation errors: DNS, SSL etc.
+    | "JS" // JS evaluation error
+    | "UNKNOWN"; // Unexpected errors
+};
+type OpenUrlResult = {
+  /** URL at where either the page ended up or JS result was returned. */
+  url: string;
+  /** JS invocation result. */
+  result: any;
+  /** Base64 of the PDF snapshot. */
+  pdfSnapshotBase64?: string;
+};
+const getErrorResult = async (
+  page: BrowserContext,
+  e: any,
+  errorCode: OpenUrlError["errorCode"] = "UNKNOWN"
+): Promise<OpenUrlError> => {
+  await closeContext(page);
+  let errorMessage = `${e.message}`;
+
+  if (e instanceof errors.TimeoutError) {
+    errorMessage = "The result was not obtained within the given timeout";
+    errorCode = "TIMEOUT";
+  }
+  if (errorCode === "JS" && typeof e.stack === "string") {
+    e.stack = e.stack.replace(
+      // Cleanup error stack from fuss
+      /\n\s+at\sopenUrl\s[\w\W]*/,
+      ""
+    );
+  }
+
+  error(`❕ Rendering error, code ${errorCode},`, e);
+
+  return {
+    error: errorMessage,
+    errorCode,
+  };
+};
+
+// If rename then fix the stack cleanup code above.
 export const openUrl = async ({
   url,
   js = "",
+  jsOn = "commit",
   timeout = 25000,
-  waitAfterResourcesLoad = 1000,
   takePdfSnapshot = false,
 }: {
   url: string;
   js?: string;
+  jsOn?: JsOn;
   timeout?: number;
-  waitAfterResourcesLoad?: number;
   takePdfSnapshot?: boolean;
-}) => {
+}): Promise<OpenUrlError | OpenUrlResult> => {
   const browser = await getGlobalBrowser();
-  const page = await browser.newPage();
-  let closingThePage = false;
-  let lastRequestTimeout: number;
-  let renderResolveFunction: (value: RenderResult) => void;
-  let pdfBuffer: Buffer = Buffer.from([]);
-  let pageHtmlBeforeClosing = "";
-  const renderPromise = new Promise<RenderResult>((resolve) => {
-    renderResolveFunction = resolve;
+
+  log(`Preparing new context for rendering...`);
+  const ctxStart = Date.now();
+  const context = await browser.newContext({
+    bypassCSP: true, // Required for script invocations
   });
-  const closePage = async (error?: Error | undefined, result?: any) => {
-    // Must be safe to call multiple times.
-    if (closingThePage) {
-      return;
-    }
-    closingThePage = true;
+  const page = await context.newPage();
+  log(`✔ Prepared new context for rendering in ${Date.now() - ctxStart}ms`);
 
-    log(`Closing ${url} with result=${result}, error=${error}`);
-
-    clearTimeout(pageTimeout);
-    clearTimeout(lastRequestTimeout);
-
-    if (takePdfSnapshot) {
-      pdfBuffer = await page.pdf({ format: "A4" });
-    }
-
-    if (!page.isClosed()) {
-      log(
-        `Page hasn't been closed yet, getting HTML from it and closing it...`
-      );
-      pageHtmlBeforeClosing = await page.innerHTML("html");
-      await page.close();
-    }
-
-    const responseError = error
-      ? (error.stack || error.message || error + "").replace(
-          // Cleanup error stack from fuss
-          /\n\s+at UtilityScript\.[\w\W]*/,
-          ""
-        )
-      : undefined;
-    const responseResult = typeof result === "undefined" ? null : result;
-
-    if (!responseError && !responseResult) {
-      log(
-        `No result neither error on page close of ${url}. Page HTML before closing is:\n\n${pageHtmlBeforeClosing}`
-      );
-    }
-
-    renderResolveFunction({
-      error: responseError,
-      result: responseResult,
-    });
-  };
-  const pageTimeout = setTimeout(closePage, timeout);
-
-  let requestsMade = 0;
-  let requestsFinished = 0;
-
-  const onRequestEnd = () => {
-    clearTimeout(lastRequestTimeout);
-    if (++requestsFinished === requestsMade) {
-      lastRequestTimeout = setTimeout(closePage, waitAfterResourcesLoad) as any;
-    }
-  };
-
-  page.on("request", () => {
-    clearTimeout(lastRequestTimeout);
-    ++requestsMade;
-  });
-  page.on("requestfailed", onRequestEnd);
-  page.on("requestfinished", onRequestEnd);
-
-  log(`Opening page ${url}...`);
-  await page.goto(url, {
-    waitUntil: "domcontentloaded",
-  });
+  let pdfSnapshotBase64: string | undefined = undefined;
 
   if (js) {
-    log(`Evaluating given JavaScript on the page ${url}...`);
-    page
-      .evaluate(async (js) => {
-        // Warning: even though this code seems to be native to the current context (typescript),
-        // IT IS INDEED TAKEN AS-IS AND IS EXECUTED IN THE BROWSER. ANY TYPE DECLARATIONS OR
-        // TYPESCRIPT TRANSPILER ARTIFACTS WILL FAIL THIS CODE IN THE BROWSER.
-        const AsyncFunction = Object.getPrototypeOf(
-          async function () {}
-        ).constructor;
-        const f = new AsyncFunction("webrender", js);
-        try {
-          return await f();
-        } catch (e) {
-          throw e;
-        }
-      }, js)
-      .then((r) => closePage(undefined, r))
-      .catch((e) => {
-        // page.evaluate will throw an error if the page was closed, but evaluation was not complete.
-        if (!closingThePage) {
-          log(`[i] ${url}: JavaScript evaluation errored: ${e}`);
-          closePage(e);
-        } else {
-          log(
-            `[i] ${url}: JavaScript evaluation was not complete before the page was closed.`
-          );
-        }
-      });
+    log(
+      `Adding custom init JS to the page (URL=${url}): <script>${js}\n</script>`
+    );
+    page.on(
+      "console",
+      (msg) =>
+        msg.type() === "error" && log(`JS error |`, msg.text(), `@ [${url}]`)
+    );
+    await page.addInitScript({
+      content: getPageInitScriptFor(js, jsOn),
+    });
   }
 
-  const result = await renderPromise;
+  log(`Opening page URL=${url}...`);
+  const pageLoadStartedAt = Date.now();
+  try {
+    await page.goto(url, {
+      waitUntil: "commit",
+      timeout,
+    });
+    log(`✔ Page opened in ${Date.now() - pageLoadStartedAt}ms at URL=${url}`);
+  } catch (e) {
+    return await getErrorResult(context, e, "NAVIGATION");
+  }
 
+  const startedAt = Date.now();
+  const timeElapsedAfterPageCommit = startedAt - pageLoadStartedAt;
+  const nextTimeout = Math.max(1, timeout - timeElapsedAfterPageCommit);
+  let result: any = null;
+  if (js) {
+    log(`Evaluating given JavaScript on the page ${url}...`);
+    try {
+      result = await Promise.race([
+        new Promise((_, reject) =>
+          setTimeout(
+            () =>
+              reject(
+                new errors.TimeoutError("JavaScript execution has timed out.")
+              ),
+            nextTimeout
+          )
+        ),
+        page
+          // Warning: even the code inside evaluate seems to be native to the current context (typescript),
+          // IT IS INDEED TAKEN AS-IS AND IS EXECUTED IN THE BROWSER. ANY TYPE DECLARATIONS OR
+          // TYPESCRIPT TRANSPILER ARTIFACTS WILL FAIL THIS CODE IN THE BROWSER.
+          .evaluate(async (WINDOW_VARIABLE_NAME) => {
+            /* @ts-expect-error */
+            return await window[WINDOW_VARIABLE_NAME];
+          }, WINDOW_VARIABLE_NAME),
+      ]);
+    } catch (e) {
+      return await getErrorResult(context, e, "JS");
+    }
+    log(`✔ JS evaluated in ${Date.now() - startedAt}ms at URL=${url}`);
+  } else {
+    log(`Waiting until page load event, URL=${url}...`);
+    try {
+      await page.waitForLoadState("load", {
+        timeout: nextTimeout,
+      });
+    } catch (e) {
+      return await getErrorResult(context, e);
+    }
+    log(`✔ Page loaded in ${Date.now() - startedAt}ms at URL=${url}`);
+  }
+
+  if (takePdfSnapshot) {
+    try {
+      log(`Taking PDF snapshot at URL=${url}...`);
+      const startedAt = Date.now();
+      pdfSnapshotBase64 = (await page.pdf({ format: "A4" })).toString("base64");
+      log(
+        `✔ PDF snapshot is done in ${Date.now() - startedAt}ms at URL=${url}...`
+      );
+    } catch (e) {
+      error(`Unable to generate PDF snapshot for ${url}`);
+    }
+  }
+
+  const finalUrl = page.url();
+
+  log(`Closing rendering context..`);
+  await closeContext(context);
+
+  log(
+    `✔ Rendering complete in ${
+      Date.now() - pageLoadStartedAt
+    }ms for URL=${url} at final URL=${finalUrl}`
+  );
   return {
-    url: await page.url(),
-    ...result,
-    ...(pdfBuffer.length ? { pdfSnapshot: pdfBuffer.toString("base64") } : {}),
+    url: finalUrl,
+    result,
+    pdfSnapshotBase64,
   };
 };

@@ -40,6 +40,7 @@ describe("/render", () => {
       headers,
       body: JSON.stringify({
         url: "",
+        jsOn: "domcontentloaded",
         js: `
           return document.body.innerHTML;
         `,
@@ -51,7 +52,7 @@ describe("/render", () => {
     expect(response.result).to.equal("");
   });
 
-  it("properly times out in case JavaScript execution stuck", async () => {
+  it("properly times out in case JavaScript execution is stuck", async () => {
     const result = await fetch(URL_RENDER, {
       method,
       headers,
@@ -61,13 +62,15 @@ describe("/render", () => {
           await new Promise(r => setTimeout(r, 999999));
           return 'never returned';
         `,
+        timeout: 4000,
       }),
     });
     const response = await result.json();
 
-    expect(result.status).to.equal(200);
+    expect(result.status).to.equal(500);
     expect(response.result).to.be.null;
-    expect(response.error).to.be.undefined;
+    expect(response.error).to.be.a("string");
+    expect(response.errorCode).to.be.equal("TIMEOUT");
   });
 
   it("returns the exact JavaScript error when provided 'js' is not valid", async () => {
@@ -83,10 +86,12 @@ describe("/render", () => {
 
     expect(result.status).to.equal(500, JSON.stringify(response));
     expect(response).to.have.property("error");
+    expect(response.errorCode).to.equal("JS");
     expect(response.error).to.include("page.evaluate:");
     expect(response.error).to.include(
       "ReferenceError: thisIsSomethingWeird is not defined"
     );
+    expect(response.error).not.to.include("/build/");
   });
 
   it("snapshots pdf", async () => {
@@ -95,6 +100,7 @@ describe("/render", () => {
       headers,
       body: JSON.stringify({
         url: "",
+        jsOn: "domcontentloaded",
         js: `
           return document.body.innerHTML = 'test';
         `,
@@ -103,7 +109,7 @@ describe("/render", () => {
     });
     const response = await result.json();
 
-    expect(result.status).to.equal(200);
+    expect(result.status).to.equal(200, JSON.stringify(response));
     expect(response.result).to.equal("test");
     expect(response.pdfSnapshot).to.have.length.greaterThan(0);
     expect(Buffer.from(response.pdfSnapshot, "base64").toString()).to.contain(
@@ -143,52 +149,5 @@ describe("/render", () => {
 
     expect(result.status).to.equal(200);
     expect(response.result).to.equal("1.0.0");
-  });
-
-  it("closes page without any activity in 1000ms by default", async () => {
-    const startedAt = Date.now();
-    const result = await fetch(URL_RENDER, {
-      method,
-      headers,
-      body: JSON.stringify({
-        url: "",
-        js: `
-          await new Promise(r => setTimeout(r, 100500))
-          return 1
-        `,
-      }),
-    });
-    const response = await result.json();
-    const elapsed = Date.now() - startedAt;
-
-    expect(result.status).to.equal(200);
-    expect(response.result).to.equal(null);
-    expect(response.error).to.be.undefined;
-    expect(elapsed).to.be.lessThan(2000);
-    expect(elapsed).to.be.greaterThan(1000);
-  });
-
-  it("waitAfterResourcesLoad = 3000ms", async () => {
-    const startedAt = Date.now();
-    const result = await fetch(URL_RENDER, {
-      method,
-      headers,
-      body: JSON.stringify({
-        url: "",
-        js: `
-          await new Promise(r => setTimeout(r, 100500))
-          return 1
-        `,
-        waitAfterResourcesLoad: 3000,
-      }),
-    });
-    const response = await result.json();
-    const elapsed = Date.now() - startedAt;
-
-    expect(result.status).to.equal(200);
-    expect(response.result).to.equal(null);
-    expect(response.error).to.be.undefined;
-    expect(elapsed).to.be.lessThan(4000);
-    expect(elapsed).to.be.greaterThan(3000);
   });
 });

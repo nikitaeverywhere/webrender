@@ -39,26 +39,30 @@ Request body:
 
 ```js
 {
-  // REQUIRED. URL of the page to render.
-  // When the empty string is given, returns an empty page.
+  /** REQUIRED. URL of the page to render. Empty string means "blank" page. */
   "url": "https://www.google.com/search?q=cats&tbm=isch",
 
-  // OPTIONAL. Timeout for rendering the page. Defaults to 20 seconds, then the result will be {null}.
+  /** OPTIONAL. Timeout for the rendering task. Defaults to 20 seconds. */
   "timeout": 20000,
 
-  // OPTIONAL. WebRender will wait for 1 second by default after all network
-  // requests are done, and then returns {null} as a result regardless
-  // of whether the provided "js" is still running.
-  "waitAfterResourcesLoad": 1000, 
+  /** OPTIONAL. When specified, also returns a base64-encoded "pdfSnapshot" property in the response. */
+  "takePdfSnapshot": true,
 
-  // When specified, returns base64-encoded "pdfSnapshot" property in the response.
-  "takePdfSnapshot": false,
+  /**
+   * OPTIONAL. You can specify when to run a JS snippet, if given.
+   * 
+   * - "commit" (default) => before the page is even created (init script)
+   * - "domcontentloaded" => after the html document was parsed
+   * - "load" => after the page contents is fully loaded, including async scripts
+   */
+  "jsOn": "commit",
 
-  // OPTIONAL. An arbitrary JavaScript code to be invoked in ASYNC CONTEXT in the browser, immediately
-  // when page starts loading. Once this code returns, WebRender will immediately close the page and
-  // return the result which is equal to a serializable value of what was returned.
-  "js": `
-    // This code is specified as a template string for readability. It should use standard JSON.
+  /**
+   * OPTIONAL. An arbitrary JavaScript code to be invoked in ASYNC CONTEXT in the browser, immediately
+   * when page starts loading. Once this code returns, WebRender will immediately close the page and
+   * return the result which is equal to a serializable value of what was returned. 
+   */
+  "js": `// This code is specified as a template string for readability. It should use standard JSON instead.
     let firstCat;
     while (true) {
       if (firstCat = document.querySelector('div[jsaction] div[jsaction] img')) {
@@ -74,13 +78,10 @@ Response body example when request succeeds:
 
 ```js
 {
-  /* Is present when any rendering errors happen. */
-  "error": "Validation errors, or an error stack if any error happened when invoking provided JavaScript code.",
-  
   /* Requested URL. */
   "url": "https://www.google.com/search?q=cats&tbm=isch",
   
-  /* JavaScript evaluation result (stringified object). */
+  /* JavaScript evaluation result (stringified object - the returned type is up to you). */
   "result": {
     "cat": "data:image/jpeg;base64,/9j/4AAQSkZ...yiFQ2pa4tNPQitOFX//Z"
   },
@@ -90,12 +91,28 @@ Response body example when request succeeds:
 }
 ```
 
-Response body when provided `"js"` is invalid or throws an error:
+Response body when request fails:
 
 ```js
 {
-    "url": "https://www.google.com/search?q=cats&tbm=isch",
+    /** Error message. Always defined in error responses. */
     "error": "page.evaluate: Evaluation failed: ReferenceError: windo is not defined\n    at eval (eval at <anonymous> (eval at evaluate (:303:29)), <anonymous>:3:41)\n    at eval (eval at evaluate (:303:29), <anonymous>:9:30)",
-    "result": null
+
+    /**
+     * Error code. Always defined in error responses.
+     * 
+     * - BAD_REQUEST => Invalid request.
+     * - TIMEOUT => Render request timeout (the desired result is not obtained within timeout).
+     * - NAVIGATION => Navigation errors, such as malformed URL, DNS or TLS certificate errors.
+     * - JS => A JavaScript error occurred (in the provided "js").
+     * - UNKNOWN => Unpredicted errors which means that webrender has failed.
+     */
+    "errorCode": "JS", // See error codes below.
+
+    /** Always the requested URL. */
+    "url": "https://www.google.com/search?q=cats&tbm=isch",
+
+    /** Always null */
+    "result": null,
 }
 ```

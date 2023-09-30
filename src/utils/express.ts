@@ -1,6 +1,6 @@
-import express, { RequestHandler } from "express";
 import { json } from "body-parser";
-import { log as logToConsole, error } from "./log";
+import express, { RequestHandler } from "express";
+import { error, log as logToConsole } from "./log";
 
 let resolveApiReady: (value?: unknown) => void = () => {};
 
@@ -56,6 +56,7 @@ export const registerEndpoint = ({
       error(`|| ${method} ${path} ${e?.stack || e}`);
       res.status(500).send({
         error: `Unable to handle ${path}: ${e?.message || e}`,
+        errorCode: "UNKNOWN",
       });
     }
     if (!res.headersSent) {

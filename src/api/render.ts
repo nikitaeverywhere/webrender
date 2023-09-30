@@ -1,49 +1,68 @@
 import { openUrl } from "browser";
-import { log, PORT, registerEndpoint } from "utils";
+import { PORT, registerEndpoint } from "utils";
 
 registerEndpoint({
   method: "POST",
   path: "/render",
   handler: async (req, res) => {
-    const { url, js, timeout, waitAfterResourcesLoad, takePdfSnapshot } =
-      req.body || {};
+    const { url, js, jsOn, timeout, takePdfSnapshot } = req.body || {};
 
     if (typeof url !== "string") {
       return res.status(400).send({
-        error: 'Please, specify "url" parameter in the request body.',
+        error:
+          'Please, specify "url" parameter in the request body, or use an empty string to render a blank page.',
+        errorCode: "BAD_REQUEST",
       });
     }
-    if (typeof js !== "string") {
-      return res
-        .status(400)
-        .send({ error: 'Please, specify "js" parameter in the request body.' });
-    }
-    if (typeof timeout !== "undefined" && typeof timeout !== "number") {
+    if (typeof js !== "undefined" && typeof js !== "string") {
       return res.status(400).send({
-        error: 'Please, specify "timeout" parameter in the request body.',
+        error:
+          'Please, specify valid "js" string parameter in the request body.',
+        errorCode: "BAD_REQUEST",
       });
     }
     if (
-      typeof waitAfterResourcesLoad !== "undefined" &&
-      typeof waitAfterResourcesLoad !== "number"
+      typeof jsOn !== "undefined" &&
+      (typeof jsOn !== "string" ||
+        !["commit", "domcontentloaded", "load"].includes(jsOn))
     ) {
       return res.status(400).send({
-        error:
-          'Please, specify "waitAfterResourcesLoad" parameter in the request body.',
+        error: 'Invalid "jsOn" parameter in the request body.',
+        errorCode: "BAD_REQUEST",
+      });
+    }
+    if (
+      typeof timeout !== "undefined" &&
+      (typeof timeout !== "number" || timeout <= 0)
+    ) {
+      return res.status(400).send({
+        error: 'Please, specify valid "timeout" parameter in the request body.',
+        errorCode: "BAD_REQUEST",
       });
     }
 
     const result = await openUrl({
       url: url || `http://localhost:${PORT}/empty`,
       js,
+      jsOn: jsOn as any, // Validated above
       timeout,
-      waitAfterResourcesLoad,
       takePdfSnapshot: !!takePdfSnapshot,
     });
 
-    log(`|| Rendering ${url}`);
-    res.status(result.error ? 500 : 200).send({
-      ...result,
-    });
+    const isError = "error" in result;
+    res.status(isError ? 500 : 200).send(
+      isError
+        ? {
+            error: result.error,
+            errorCode: result.errorCode || "UNKNOWN",
+            url,
+            result: null,
+          }
+        : {
+            url: result.url,
+            result: result.result ?? null,
+            pdfSnapshot: result.pdfSnapshotBase64,
+          }
+    );
   },
 });

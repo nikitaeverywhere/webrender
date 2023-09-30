@@ -1,6 +1,6 @@
 import { expect } from "chai";
-import { LOCAL_API_URL } from "../const";
 import fetch from "node-fetch";
+import { LOCAL_API_URL } from "../const";
 
 describe("/health-check", () => {
   it("is successful", async () => {

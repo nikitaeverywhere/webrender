@@ -53,26 +53,21 @@ export const getPageInitScriptFor = (
   } = {}) {
     const timeoutPromise = new Promise((resolve) => {
       setTimeout(() => {
-        console.error('Page is not loaded in time');
         resolve();
       }, ${timeout} - resolveBeforeRenderingTimeout);
     });
 
     const loadPromise = new Promise((resolve) => {
       addEventListener('load', () => {
-        while (true) {
-          const lastResponseAt = +localStorage.getItem(
-            '${LAST_RESPONSE_AT_VARIABLE_NAME}'
-            );
-          const counterRequestsUnfinished = +localStorage.getItem(
-            '${COUNTER_REQUEST_UNFINISHED_VARIABLE_NAME}'
-          );
+        const checkLoaded = setInterval(() => {
+          const lastResponseAt = +localStorage.getItem('${LAST_RESPONSE_AT_VARIABLE_NAME}');
+          const counterRequestsUnfinished = +localStorage.getItem('${COUNTER_REQUEST_UNFINISHED_VARIABLE_NAME}');
           const isLoaded = lastResponseAt && Date.now() - lastResponseAt > idleTimeout;
           if (isLoaded && counterRequestsUnfinished === 0) {
+            clearInterval(checkLoaded);
             resolve();
-            break;
-          } else {}
-        }
+          }
+        }, 1000);
       });
     });
 
@@ -205,9 +200,7 @@ export const openUrl = async ({
           const item = counterRequestsUnfinished.toString();
           localStorage.setItem(COUNTER_REQUEST_UNFINISHED_VARIABLE_NAME, item);
         }, { counterRequestsUnfinished, COUNTER_REQUEST_UNFINISHED_VARIABLE_NAME });
-      } catch (e) { 
-        // log(`Failed to set request counter`, e);
-       }
+      } catch (e) {}
     };
     const onRequestProcessed = async () => {
       try {
@@ -215,9 +208,7 @@ export const openUrl = async ({
           const item = Date.now().toString();
           localStorage.setItem(LAST_RESPONSE_AT_VARIABLE_NAME, item);
         }, {LAST_RESPONSE_AT_VARIABLE_NAME});
-      } catch (e) { 
-        // log(`Failed to set last response time`, e);
-      }
+      } catch (e) {}
      };
 
     page.on('request', async () => {

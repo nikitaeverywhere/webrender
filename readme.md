@@ -12,8 +12,9 @@ to [zitros/prerender](https://hub.docker.com/r/zitros/prerender).
 docker pull zitros/webrender
 ```
 
-+ Always production-ready and light.
-+ Get any information from rendered pages with arbitrary async JavaScript.
++ Always production-ready and as light as possible.
++ Get any data from rendered pages with arbitrary async JavaScript.
++ Render PDF snapshots of the webpage or assemble your own with JavaScript.
 + Using [Playwright](https://github.com/microsoft/playwright) with Chromium under the hood.
 
 ## API

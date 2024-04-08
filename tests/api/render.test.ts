@@ -94,6 +94,25 @@ describe("/render", () => {
     expect(response.error).not.to.include("/build/");
   });
 
+  it("returns JavaScript syntax error when provided 'js' is not valid", async () => {
+    const result = await fetch(URL_RENDER, {
+      method,
+      headers,
+      body: JSON.stringify({
+        url: "https://www.google.com/",
+        js: "(",
+      }),
+    });
+    const response = await result.json();
+
+    expect(result.status).to.equal(500, JSON.stringify(response));
+    expect(response).to.have.property("error");
+    expect(response.errorCode).to.equal("JS");
+    expect(response.error).to.include("page.evaluate:");
+    expect(response.error).to.include("Syntax");
+    expect(response.error).not.to.include("/build/");
+  });
+
   it("snapshots pdf", async () => {
     const result = await fetch(URL_RENDER, {
       method,

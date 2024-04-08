@@ -40,16 +40,49 @@ export const closeBrowser = async () => {
 };
 
 const WINDOW_VARIABLE_NAME = `___webrender`;
+const LAST_RESPONSE_AT_VARIABLE_NAME = `__webrenderLastResponseAt`;
+const COUNTER_REQUEST_UNFINISHED_VARIABLE_NAME = `__webrenderCounterReqUnfinished`;
 export const getPageInitScriptFor = (
   js: string,
-  jsOn: JsOn = "commit"
-) => `try {
-  const AsyncFunction = Object.getPrototypeOf(
+  jsOn: JsOn = "commit",
+  timeoutAt: number
+) => {
+  const PAGE_TRUE_LOAD = `
+  async pendingRequests ({
+    idleTimeout = 2000, resolveBeforeRenderingTimeout = 2000
+  } = {}) {
+    const timeoutPromise = new Promise((resolve) => {
+      setTimeout(() => {
+        resolve({ isTimeout: true });
+      }, ${timeoutAt} - Date.now() - resolveBeforeRenderingTimeout);
+    });
+
+    const loadPromise = new Promise((resolve) => {
+      addEventListener('load', () => {
+        const checkLoaded = setInterval(() => {
+          const lastResponseAt = +localStorage.getItem('${LAST_RESPONSE_AT_VARIABLE_NAME}');
+          const counterRequestsUnfinished = +localStorage.getItem('${COUNTER_REQUEST_UNFINISHED_VARIABLE_NAME}');
+          const isNetworkIdle = lastResponseAt && Date.now() - lastResponseAt > idleTimeout;
+          if (isNetworkIdle && counterRequestsUnfinished === 0) {
+            clearInterval(checkLoaded);
+            resolve({ isTimeout: false });
+          }
+        }, 100);
+      });
+    });
+
+    return Promise.race([timeoutPromise, loadPromise]);
+  }
+`;
+
+  const WEBRENDER = `const webrender = {${PAGE_TRUE_LOAD}};`;
+
+  return `try {
+   const AsyncFunction = Object.getPrototypeOf(
     async function () {}
   ).constructor;
-  const f = new AsyncFunction("webrender", \`${js
-    .replace(/`/g, "\\`")
-    .replace(/\${/g, "\\${")}\`);
+  const f = new AsyncFunction("_webrender", \`${WEBRENDER + js.replace(/`/g, "\\`")
+    .replace(/\${/g, "\\${")}\`);;
   const promise = ${
     jsOn === "commit"
       ? "f()"
@@ -64,9 +97,10 @@ export const getPageInitScriptFor = (
   Object.defineProperty(window, '${WINDOW_VARIABLE_NAME}', {
     get: () => promise
   });
-} catch (e) {
-  console.error("Page init script has failed!", e);
-}`;
+  } catch (e) {
+    console.error("Page init script has failed!", e);
+  }`;
+}
 
 const closeContext = async (ctx: BrowserContext) => {
   try {
@@ -157,8 +191,49 @@ export const openUrl = async ({
         msg.type() === "error" &&
         log(`JS error |`, msg.text().replace(/\n[\w\W]*/, ""), `@ [${url}]`)
     );
+
+  let counterRequestsUnfinished = 0;
+  const incRequestsUnfinished = async (inc: 1 | -1) => {
+    counterRequestsUnfinished += inc;
+    try {
+      await page.evaluate(
+        ({
+          counterRequestsUnfinished,
+          COUNTER_REQUEST_UNFINISHED_VARIABLE_NAME,
+          LAST_RESPONSE_AT_VARIABLE_NAME,
+        }) => {
+          const counter = counterRequestsUnfinished.toString();
+          localStorage.setItem(COUNTER_REQUEST_UNFINISHED_VARIABLE_NAME, counter);
+          if (counterRequestsUnfinished < 0) {
+            const responseAt = Date.now().toString();
+            localStorage.setItem(LAST_RESPONSE_AT_VARIABLE_NAME, responseAt);
+          }
+        },
+        {
+          counterRequestsUnfinished,
+          COUNTER_REQUEST_UNFINISHED_VARIABLE_NAME,
+          LAST_RESPONSE_AT_VARIABLE_NAME,
+        }
+      );
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+    page.on('request', async () => {
+      await incRequestsUnfinished(1);
+    });
+    page.on('requestfailed', async () => {
+      await incRequestsUnfinished(-1);
+    });
+    page.on('requestfinished', async () => {
+      await incRequestsUnfinished(-1);
+    });
+
+    const timeoutAt = Date.now() + timeout;
+
     await page.addInitScript({
-      content: getPageInitScriptFor(js, jsOn),
+      content: getPageInitScriptFor(js, jsOn, timeoutAt),
     });
   }
 

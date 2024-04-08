@@ -48,7 +48,7 @@ export const getPageInitScriptFor = (
   timeoutAt: number
 ) => {
   const PAGE_TRUE_LOAD = `
-  async pageTrueLoad ({
+  async pendingRequests ({
     idleTimeout = 2000, resolveBeforeRenderingTimeout = 2000
   } = {}) {
     const timeoutPromise = new Promise((resolve) => {
@@ -81,7 +81,7 @@ export const getPageInitScriptFor = (
    const AsyncFunction = Object.getPrototypeOf(
     async function () {}
   ).constructor;
-  const f = new AsyncFunction("_webrender", \`${WEBRENDER + js .replace(/`/g, "\\`")
+  const f = new AsyncFunction("_webrender", \`${WEBRENDER + js.replace(/`/g, "\\`")
     .replace(/\${/g, "\\${")}\`);;
   const promise = ${
     jsOn === "commit"
@@ -192,37 +192,33 @@ export const openUrl = async ({
         log(`JS error |`, msg.text().replace(/\n[\w\W]*/, ""), `@ [${url}]`)
     );
 
-    let counterRequestsUnfinished = 0;
-    const onRequestProcessed = async () => {
-      try {
-        await page.evaluate(
-          ({ LAST_RESPONSE_AT_VARIABLE_NAME }) => {
-            const item = Date.now().toString();
-            localStorage.setItem(LAST_RESPONSE_AT_VARIABLE_NAME, item);
-          },
-          { LAST_RESPONSE_AT_VARIABLE_NAME }
-        );
-      } catch (e) {
-        console.error(e);
-      }
-    };
-    const incRequestsUnfinished = async (inc: 1 | -1) => {
-      counterRequestsUnfinished += inc;
-      try {
-        await page.evaluate(
-          ({ counterRequestsUnfinished, COUNTER_REQUEST_UNFINISHED_VARIABLE_NAME }) => {
-            const item = counterRequestsUnfinished.toString();
-            localStorage.setItem(COUNTER_REQUEST_UNFINISHED_VARIABLE_NAME, item);
-          },
-          { counterRequestsUnfinished, COUNTER_REQUEST_UNFINISHED_VARIABLE_NAME }
-        );
-      } catch (e) {
-        console.error(e);
-      }
-      if (inc < 0) {
-        await onRequestProcessed();
-      }
-    };
+  let counterRequestsUnfinished = 0;
+  const incRequestsUnfinished = async (inc: 1 | -1) => {
+    counterRequestsUnfinished += inc;
+    try {
+      await page.evaluate(
+        ({
+          counterRequestsUnfinished,
+          COUNTER_REQUEST_UNFINISHED_VARIABLE_NAME,
+          LAST_RESPONSE_AT_VARIABLE_NAME,
+        }) => {
+          const counter = counterRequestsUnfinished.toString();
+          localStorage.setItem(COUNTER_REQUEST_UNFINISHED_VARIABLE_NAME, counter);
+          if (counterRequestsUnfinished < 0) {
+            const responseAt = Date.now().toString();
+            localStorage.setItem(LAST_RESPONSE_AT_VARIABLE_NAME, responseAt);
+          }
+        },
+        {
+          counterRequestsUnfinished,
+          COUNTER_REQUEST_UNFINISHED_VARIABLE_NAME,
+          LAST_RESPONSE_AT_VARIABLE_NAME,
+        }
+      );
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
     page.on('request', async () => {
       await incRequestsUnfinished(1);

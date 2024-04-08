@@ -39,9 +39,9 @@ provided as a `"js"` parameter.
 > [!NOTE]  
 > There are utility functions available in the `window` object which can be used in the custom JavaScript code: 
 
-- `async pageTrueLoad ({
+- `async webrender.pendingRequests ({
     idleTimeout = 2000, resolveBeforeRenderingTimeout = 2000
-  } = {})` - a promise that resolves when the page is fully loaded (including delayed requests).
+  } = {})` - resolves when there are no more pending network requests, but resolveBeforeRenderingTimeout before the global timeout.
 
 Request body:
 

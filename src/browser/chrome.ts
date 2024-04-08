@@ -45,7 +45,7 @@ const COUNTER_REQUEST_UNFINISHED_VARIABLE_NAME = `__webrenderCounterReqUnfinishe
 export const getPageInitScriptFor = (
   js: string,
   jsOn: JsOn = "commit",
-  timeout: number
+  timeoutAt: number
 ) => {
   const PAGE_TRUE_LOAD = `
   async pageTrueLoad ({
@@ -53,8 +53,8 @@ export const getPageInitScriptFor = (
   } = {}) {
     const timeoutPromise = new Promise((resolve) => {
       setTimeout(() => {
-        resolve();
-      }, ${timeout} - resolveBeforeRenderingTimeout);
+        resolve({ isTimeout: true });
+      }, ${timeoutAt} - Date.now() - resolveBeforeRenderingTimeout);
     });
 
     const loadPromise = new Promise((resolve) => {
@@ -62,12 +62,12 @@ export const getPageInitScriptFor = (
         const checkLoaded = setInterval(() => {
           const lastResponseAt = +localStorage.getItem('${LAST_RESPONSE_AT_VARIABLE_NAME}');
           const counterRequestsUnfinished = +localStorage.getItem('${COUNTER_REQUEST_UNFINISHED_VARIABLE_NAME}');
-          const isLoaded = lastResponseAt && Date.now() - lastResponseAt > idleTimeout;
-          if (isLoaded && counterRequestsUnfinished === 0) {
+          const isNetworkIdle = lastResponseAt && Date.now() - lastResponseAt > idleTimeout;
+          if (isNetworkIdle && counterRequestsUnfinished === 0) {
             clearInterval(checkLoaded);
-            resolve();
+            resolve({ isTimeout: false });
           }
-        }, 1000);
+        }, 100);
       });
     });
 
@@ -193,38 +193,51 @@ export const openUrl = async ({
     );
 
     let counterRequestsUnfinished = 0;
-    const updateCounter = async (counter: number) => { 
-      counterRequestsUnfinished = counter;
-      try {
-        await page.evaluate(({ counterRequestsUnfinished, COUNTER_REQUEST_UNFINISHED_VARIABLE_NAME }) => {
-          const item = counterRequestsUnfinished.toString();
-          localStorage.setItem(COUNTER_REQUEST_UNFINISHED_VARIABLE_NAME, item);
-        }, { counterRequestsUnfinished, COUNTER_REQUEST_UNFINISHED_VARIABLE_NAME });
-      } catch (e) {}
-    };
     const onRequestProcessed = async () => {
       try {
-        await page.evaluate(({ LAST_RESPONSE_AT_VARIABLE_NAME }) => {
-          const item = Date.now().toString();
-          localStorage.setItem(LAST_RESPONSE_AT_VARIABLE_NAME, item);
-        }, {LAST_RESPONSE_AT_VARIABLE_NAME});
-      } catch (e) {}
-     };
+        await page.evaluate(
+          ({ LAST_RESPONSE_AT_VARIABLE_NAME }) => {
+            const item = Date.now().toString();
+            localStorage.setItem(LAST_RESPONSE_AT_VARIABLE_NAME, item);
+          },
+          { LAST_RESPONSE_AT_VARIABLE_NAME }
+        );
+      } catch (e) {
+        console.error(e);
+      }
+    };
+    const incRequestsUnfinished = async (inc: 1 | -1) => {
+      counterRequestsUnfinished += inc;
+      try {
+        await page.evaluate(
+          ({ counterRequestsUnfinished, COUNTER_REQUEST_UNFINISHED_VARIABLE_NAME }) => {
+            const item = counterRequestsUnfinished.toString();
+            localStorage.setItem(COUNTER_REQUEST_UNFINISHED_VARIABLE_NAME, item);
+          },
+          { counterRequestsUnfinished, COUNTER_REQUEST_UNFINISHED_VARIABLE_NAME }
+        );
+      } catch (e) {
+        console.error(e);
+      }
+      if (inc < 0) {
+        await onRequestProcessed();
+      }
+    };
 
     page.on('request', async () => {
-      await updateCounter(counterRequestsUnfinished + 1);
+      await incRequestsUnfinished(1);
     });
-    page.on('requestfailed', async () => { 
-      await updateCounter(counterRequestsUnfinished - 1);
-      await onRequestProcessed();
+    page.on('requestfailed', async () => {
+      await incRequestsUnfinished(-1);
     });
-    page.on('requestfinished', async () => { 
-      await updateCounter(counterRequestsUnfinished - 1);
-      await onRequestProcessed();
+    page.on('requestfinished', async () => {
+      await incRequestsUnfinished(-1);
     });
 
+    const timeoutAt = Date.now() + timeout;
+
     await page.addInitScript({
-      content: getPageInitScriptFor(js, jsOn, timeout),
+      content: getPageInitScriptFor(js, jsOn, timeoutAt),
     });
   }
 

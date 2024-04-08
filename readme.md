@@ -36,6 +36,10 @@ provided as a `"js"` parameter.
 + A result of a custom async JavaScript invocation (`"js"` and `"jsOn"` parameters) is returned in the response as `"result"`.
 + A result of the PDF generation (`"takePdfSnapshot"` parameter) is returned in the response as `"pdfSnapshot"`.
 
+Note: there are utility functions available in the `window` object which can be used in the custom JavaScript code: 
+
+- `pageTrueLoad` - a promise that resolves when the page is fully loaded (including delayed requests).
+
 Request body:
 
 ```js

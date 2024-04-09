@@ -235,7 +235,7 @@ export const openUrl = async ({
     page.on("requestfailed", (x) => incRequestsUnfinished(-1, x));
     page.on("requestfinished", (x) => incRequestsUnfinished(-1, x));
 
-    const timeoutAt = Date.now() + timeout;
+    const timeoutAt = ctxStart + timeout;
 
     await page.addInitScript({
       content: getPageInitScriptFor(js, jsOn, timeoutAt),

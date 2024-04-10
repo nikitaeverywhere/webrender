@@ -235,11 +235,13 @@ export const openUrl = async ({
     page.on("requestfailed", (x) => incRequestsUnfinished(-1, x));
     page.on("requestfinished", (x) => incRequestsUnfinished(-1, x));
 
-    const timeoutAt = Date.now() + timeout;
+    const timeoutAt = ctxStart + timeout;
 
+    log(`Adding init script to the page...`, `Timeout at ${new Date(timeoutAt).toUTCString()}`);
     await page.addInitScript({
       content: getPageInitScriptFor(js, jsOn, timeoutAt),
     });
+    log(`✔ Init script added to the page`);
   }
 
   log(`Opening page URL=${url}...`);
@@ -257,6 +259,7 @@ export const openUrl = async ({
   const startedAt = Date.now();
   const timeElapsedAfterPageCommit = startedAt - pageLoadStartedAt;
   let nextTimeout = Math.max(1, timeout - timeElapsedAfterPageCommit);
+  log(`nextTimeout is ${nextTimeout}ms`);
   let result: any = null;
   if (js) {
     let jsContextPageUrl = page.url();

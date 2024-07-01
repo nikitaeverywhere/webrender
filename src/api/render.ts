@@ -5,7 +5,14 @@ registerEndpoint({
   method: "POST",
   path: "/render",
   handler: async (req, res) => {
-    const { url, js, jsOn, timeout, takePdfSnapshot } = req.body || {};
+    const {
+      url,
+      js,
+      jsOn,
+      timeout,
+      takePdfSnapshot,
+      extraHttpHeaders: _extraHttpHeaders,
+    } = req.body || {};
 
     if (typeof url !== "string") {
       return res.status(400).send({
@@ -40,6 +47,24 @@ registerEndpoint({
         errorCode: "BAD_REQUEST",
       });
     }
+    if (
+      typeof _extraHttpHeaders !== "undefined" &&
+      (typeof _extraHttpHeaders !== "object" ||
+        _extraHttpHeaders === null ||
+        !Object.entries(_extraHttpHeaders).length ||
+        Object.entries(_extraHttpHeaders).find(
+          ([k, v]) => typeof k !== "string" || typeof v !== "string"
+        ))
+    ) {
+      return res.status(400).send({
+        error:
+          'Please, specify valid "extraHttpHeaders" parameter in the request body.',
+        errorCode: "BAD_REQUEST",
+      });
+    }
+
+    const extraHttpHeaders =
+      (_extraHttpHeaders as { [key: string]: string }) || {};
 
     const result = await openUrl({
       url: url || `http://localhost:${PORT}/empty`,
@@ -47,6 +72,7 @@ registerEndpoint({
       jsOn: jsOn as any, // Validated above
       timeout,
       takePdfSnapshot: !!takePdfSnapshot,
+      extraHttpHeaders,
     });
 
     const isError = "error" in result;

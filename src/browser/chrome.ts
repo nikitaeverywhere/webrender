@@ -170,12 +170,14 @@ export const openUrl = async ({
   jsOn = "commit",
   timeout = 25000,
   takePdfSnapshot = false,
+  extraHttpHeaders = {},
 }: {
   url: string;
   js?: string;
   jsOn?: JsOn;
   timeout?: number;
   takePdfSnapshot?: boolean;
+  extraHttpHeaders?: { [key: string]: string };
 }): Promise<OpenUrlError | OpenUrlResult> => {
   const browser = await getGlobalBrowser();
 
@@ -184,6 +186,16 @@ export const openUrl = async ({
   const context = await browser.newContext({
     bypassCSP: true, // Required for script invocations
   });
+
+  if (Object.keys(extraHttpHeaders).length) {
+    log(
+      `Using extra http request headers ["${Object.keys(extraHttpHeaders).join(
+        '", "'
+      )}"]`
+    );
+    context.setExtraHTTPHeaders(extraHttpHeaders);
+  }
+
   const page = await context.newPage();
   log(`✔ Prepared new context for rendering in ${Date.now() - ctxStart}ms`);
 
@@ -237,7 +249,10 @@ export const openUrl = async ({
 
     const timeoutAt = ctxStart + timeout;
 
-    log(`Adding init script to the page...`, `Timeout at ${new Date(timeoutAt).toUTCString()}`);
+    log(
+      `Adding init script to the page...`,
+      `Timeout at ${new Date(timeoutAt).toUTCString()}`
+    );
     await page.addInitScript({
       content: getPageInitScriptFor(js, jsOn, timeoutAt),
     });

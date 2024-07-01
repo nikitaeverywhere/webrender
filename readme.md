@@ -37,13 +37,6 @@ provided as a `"js"` parameter.
 + A result of a custom async JavaScript invocation (`"js"` and `"jsOn"` parameters) is returned in the response as `"result"`.
 + A result of the PDF generation (`"takePdfSnapshot"` parameter) is returned in the response as `"pdfSnapshot"`.
 
-> [!NOTE]  
-> There are utility functions available in the `window` object which can be used in the custom JavaScript code: 
-
-- `async webrender.pendingRequests ({
-    idleTimeout = 2000, resolveBeforeRenderingTimeout = 2000
-  } = {})` - resolves when there are no more pending network requests, but resolveBeforeRenderingTimeout before the global timeout.
-
 Request body:
 
 ```js
@@ -71,7 +64,7 @@ Request body:
    * when page starts loading. Once this code returns, WebRender will immediately close the page and
    * return the result which is equal to a serializable value of what was returned. 
    */
-  "js": `// This code is specified as a template string for readability. It should use standard JSON instead.
+  "js": ` // This code is specified as a template string for this example readability. It should use standard JSON notation.
     let firstCat;
     while (true) {
       if (firstCat = document.querySelector('div[jsaction] div[jsaction] img')) {
@@ -80,8 +73,33 @@ Request body:
       await new Promise(resolve => setTimeout(resolve, 50)); // Sleep for 50ms
     }
   `,
+
+  /**
+   * OPTIONAL. Extra headers to send with browser requests.
+   * @see https://playwright.dev/docs/api/class-browsercontext#browser-context-set-extra-http-headers
+   */
+  "extraHttpHeaders": {
+    "Authorization": "Bearer EXAMPLE==="
+  }
 }
 ```
+
+In request's `"js"`, you can use the following utility functions in the global context:
+
+```js
+/**
+ * Allows to wait until the network becomes idle. Handy to determine when the page is fully loaded. Mind that some pages can do infinite http polling.
+ * Resolves when there are no more pending network requests within idleTimeout, but resolveBeforeRenderingTimeout before the global timeout.
+ */
+const { isTimeout } = await webrender.pendingRequests({
+  /** OPTIONAL. Number of milliseconds to wait between network requests. Defaults to 2000. */
+  idleTimeout: 2000,
+  /** OPTIONAL. Number of milliseconds to resolve before the rendering timeout. Defaults to 2000. */
+  resolveBeforeRenderingTimeout: 2000,
+});
+// `isTimeout` equals to true if the waiting time was a timeout.
+```
+
 
 Response body example when request succeeds:
 

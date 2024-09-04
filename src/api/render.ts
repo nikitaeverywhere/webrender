@@ -88,6 +88,7 @@ registerEndpoint({
             url: result.url,
             result: result.result ?? null,
             pdfSnapshot: result.pdfSnapshotBase64,
+            network: result.network,
           }
     );
   },

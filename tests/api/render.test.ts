@@ -32,6 +32,11 @@ describe("/render", () => {
     expect(result.status).to.equal(200);
     expect(response.result).to.have.property("cat");
     expect(response.result.cat).length.to.be.greaterThan(30); // Just test that it's there
+    expect(response.network.requests).to.deep.contain({
+      method: "GET",
+      resourceType: "document",
+      url: "https://www.google.com/search?q=cats&tbm=isch",
+    });
   });
 
   it("renders an empty page when given empty URL", async () => {

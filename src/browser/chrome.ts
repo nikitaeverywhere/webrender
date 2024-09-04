@@ -134,6 +134,14 @@ type OpenUrlResult = {
   result: any;
   /** Base64 of the PDF snapshot. */
   pdfSnapshotBase64?: string;
+  /** Networking information. */
+  network: {
+    requests: Array<{
+      method: string;
+      resourceType: string;
+      url: string;
+    }>;
+  };
 };
 const getErrorResult = async (
   page: BrowserContext,
@@ -186,6 +194,9 @@ export const openUrl = async ({
   const context = await browser.newContext({
     bypassCSP: true, // Required for script invocations
   });
+  const network: OpenUrlResult["network"] = {
+    requests: [],
+  };
 
   if (Object.keys(extraHttpHeaders).length) {
     log(
@@ -243,7 +254,14 @@ export const openUrl = async ({
       }
     };
 
-    page.on("request", (x) => incRequestsUnfinished(1, x));
+    page.on("request", (x) => {
+      network.requests.push({
+        method: x.method(),
+        resourceType: x.resourceType(),
+        url: x.url(),
+      });
+      incRequestsUnfinished(1, x);
+    });
     page.on("requestfailed", (x) => incRequestsUnfinished(-1, x));
     page.on("requestfinished", (x) => incRequestsUnfinished(-1, x));
 
@@ -364,5 +382,6 @@ export const openUrl = async ({
     url: finalUrl,
     result,
     pdfSnapshotBase64,
+    network,
   };
 };

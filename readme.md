@@ -103,7 +103,7 @@ const { isTimeout } = await webrender.pendingRequests({
 
 Response body example when request succeeds:
 
-```js
+```json
 {
   /* Requested URL. */
   "url": "https://www.google.com/search?q=cats&tbm=isch",
@@ -115,12 +115,27 @@ Response body example when request succeeds:
 
   /* Optional BASE64-encoded PDF, when "takePdfSnapshot" is given. */
   "pdfSnapshot": "Aci2zo...S51==",
+
+  "network": {
+    "requests": [
+      {
+        "method": "GET",
+        "resourceType": "document",
+        "url": "https://www.google.com/search?q=cats&tbm=isch"
+      },
+      {
+        "method": "GET",
+        "resourceType": "image",
+        "url": "https://fonts.gstatic.com/s/i/productlogos/googleg/v6/24px.svg"
+      },
+    ]
+  },
 }
 ```
 
 Response body when request fails:
 
-```js
+```json
 {
   /** Error message. Always defined in error responses. */
   "error": "page.evaluate: Evaluation failed: ReferenceError: windo is not defined\n    at eval (eval at <anonymous> (eval at evaluate (:303:29)), <anonymous>:3:41)\n    at eval (eval at evaluate (:303:29), <anonymous>:9:30)",

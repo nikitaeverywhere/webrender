@@ -262,6 +262,12 @@ export const openUrl = async ({
       });
       incRequestsUnfinished(1, x);
     });
+    page.on("framenavigated", (frame) => {
+      if (frame === page.mainFrame()) {
+        // This clears all "document" types of requests since event happens after navigation.
+        network.requests = [];
+      }
+    });
     page.on("requestfailed", (x) => incRequestsUnfinished(-1, x));
     page.on("requestfinished", (x) => incRequestsUnfinished(-1, x));
 

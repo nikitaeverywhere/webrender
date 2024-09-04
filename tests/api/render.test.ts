@@ -32,10 +32,43 @@ describe("/render", () => {
     expect(result.status).to.equal(200);
     expect(response.result).to.have.property("cat");
     expect(response.result.cat).length.to.be.greaterThan(30); // Just test that it's there
+  });
+
+  it("properly handles redirects and network requests", async () => {
+    const result = await fetch(URL_RENDER, {
+      method,
+      headers,
+      body: JSON.stringify({
+        url: "http://www.google.com/search?q=cats&tbm=isch",
+        js: `
+          let firstCat;
+          while (true) {
+            if (firstCat = document.querySelector('div[jsaction] div[jsaction] img')) {
+              return { cat: firstCat.src };
+            }
+            await new Promise(resolve => setTimeout(resolve, 50));
+          }
+        `,
+      }),
+    });
+    const response = await result.json();
+
+    expect(result.status).to.equal(200);
+    expect(response.result).to.have.property("cat");
+    expect(response.result.cat).length.to.be.greaterThan(30); // Just test that it's there
+    console.log(response.network.requests);
+    expect(response.network.requests).not.to.deep.contain(
+      {
+        method: "GET",
+        resourceType: "document",
+        url: "http://www.google.com/search?q=cats&tbm=isch",
+      },
+      "Redirect is a page load event which should clear network requests from the previous page"
+    );
     expect(response.network.requests).to.deep.contain({
       method: "GET",
-      resourceType: "document",
-      url: "https://www.google.com/search?q=cats&tbm=isch",
+      resourceType: "image",
+      url: "https://www.google.com/tia/tia.png",
     });
   });
 

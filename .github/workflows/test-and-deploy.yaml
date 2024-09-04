@@ -48,7 +48,7 @@ jobs:
         .
     - name: Validate docker container before pushing
       run: |
-        docker-compose -f docker-compose.yaml up -d
+        docker compose -f docker-compose.yaml up -d
         sleep 5
         curl -v --fail http://localhost:8080/health-check/
     - run: docker push --all-tags ${{ env.IMAGE_TAG }}

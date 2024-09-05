@@ -57,7 +57,7 @@ describe("/render", () => {
     expect(response.result).to.have.property("cat");
     expect(response.result.cat).length.to.be.greaterThan(30); // Just test that it's there
     console.log(response.network.requests);
-    expect(response.network.requests).not.to.deep.contain(
+    expect(response.network.requests).to.deep.contain(
       {
         method: "GET",
         resourceType: "document",
